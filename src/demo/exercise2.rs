@@ -9,7 +9,7 @@ use embassy_rp::bind_interrupts;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{DMA_CH0, PIN_23, PIN_24, PIN_25, PIN_29, PIO0};
 use embassy_rp::pio::{InterruptHandler, Pio};
-use embassy_rp::pwm::Config as ConfigPwm; // PWM config
+use embassy_rp::pwm::{Config as ConfigPwm, Pwm}; // PWM config
 use embassy_time::{Duration, Timer};
 use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
@@ -72,14 +72,25 @@ async fn main(spawner: Spawner) {
     )
     .await;
 
-    // let delay = Duration::from_secs(1);
-    loop {
-        info!("led on!");
-        control.gpio_set(0, true).await;
-        Timer::after(delay).await;
+    let mut config_pwm: ConfigPwm = Default::default();
+    config_pwm.top = 0x8000;
+    config_pwm.compare_a = config_pwm.top;
+    config_pwm.compare_b = config_pwm.top;
 
-        info!("led off!");
-        control.gpio_set(0, false).await;
+    let mut rgb_1_2_pin = Pwm::new_output_ab(p.PWM_SLICE0, p.PIN_0, p.PIN_1, config_pwm.clone());
+    let mut rgb_3_pin = Pwm::new_output_a(p.PWM_SLICE1, p.PIN_2, config_pwm.clone());
+
+    let delay = Duration::from_secs(1);
+    loop {
+        if config_pwm.compare_a < config_pwm.top / 10 || config_pwm.compare_b < config_pwm.top / 10
+        {
+            config_pwm.compare_a = config_pwm.top + config_pwm.top / 10;
+            config_pwm.compare_b = config_pwm.top + config_pwm.top / 10;
+        }
         Timer::after(delay).await;
+        config_pwm.compare_a -= config_pwm.top / 10;
+        config_pwm.compare_b -= config_pwm.top / 10;
+        rgb_1_2_pin.set_config(&config_pwm);
+        rgb_3_pin.set_config(&config_pwm);
     }
 }

@@ -62,7 +62,6 @@ async fn config_wifi(
 
     control
 }
-
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
@@ -72,14 +71,24 @@ async fn main(spawner: Spawner) {
     )
     .await;
 
+    let mut green_pin = Output::new(p.PIN_4, Level::Low);
+    let mut red_pin = Output::new(p.PIN_5, Level::Low);
+
     // let delay = Duration::from_secs(1);
     loop {
-        info!("led on!");
-        control.gpio_set(0, true).await;
-        Timer::after(delay).await;
+        green_pin.set_low();
+        red_pin.set_high();
+        Timer::after_secs(1).await;
+        red_pin.set_low();
+        green_pin.set_high();
+        Timer::after_secs(1).await;
 
-        info!("led off!");
-        control.gpio_set(0, false).await;
-        Timer::after(delay).await;
+        // info!("led on!");
+        // control.gpio_set(0, true).await;
+        // Timer::after(delay).await;
+        //
+        // info!("led off!");
+        // control.gpio_set(0, false).await;
+        // Timer::after(delay).await;
     }
 }
